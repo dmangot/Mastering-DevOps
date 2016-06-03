@@ -3,5 +3,7 @@ graphite:
     - pkgs:
       - graphite-web
       - graphite-carbon
+
+carbon-cache:
   service.running:
     - enable: True
