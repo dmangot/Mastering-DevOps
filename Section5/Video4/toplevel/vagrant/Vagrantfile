@@ -1,0 +1,77 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  # Every Vagrant development environment requires a box. You can search for
+  # boxes at https://atlas.hashicorp.com/search.
+  config.vm.box = "ubuntu/trusty64"
+
+  #
+  config.vm.provider "virtualbox" do |vb|
+     # Display the VirtualBox GUI when booting the machine
+    vb.gui = true
+     # Customize the amount of memory on the VM:
+     vb.memory = "512"
+   end
+
+   config.vm.provision "shell", inline: <<-SHELL
+     mkdir -p /etc/salt/minion.d
+     echo "master: 192.168.50.10" > /etc/salt/minion.d/master.conf
+     echo "hash_type: sha256" > /etc/salt/minion.d/hash_type.conf
+   SHELL
+
+   config.vm.provision :salt do |salt|
+         salt.masterless = false
+         salt.minion_config = "salt/minion"
+         salt.run_highstate = false
+         config.ssh.pty = false
+       end
+
+   config.vm.define "master" do |master|
+       master.vm.synced_folder "../salt", "/srv/salt"
+       master.vm.network "private_network", ip: "192.168.50.10"
+       master.vm.provision "shell", inline: <<-SHELL
+         echo "id: master" > /etc/salt/minion.d/id.conf
+       SHELL
+
+       master.vm.provision :salt do |saltmaster|
+         saltmaster.install_master = true
+         saltmaster.minion_key = "salt/key/master.pem"
+         saltmaster.minion_pub = "salt/key/master.pub"
+         saltmaster.master_key = "salt/key/master.pem"
+         saltmaster.master_pub = "salt/key/master.pub"
+         saltmaster.seed_master = {master:'salt/key/master.pub', minion:'salt/key/minion.pub'}
+       end
+
+       # this is here because of Vagrant run ordering
+       master.vm.provision "shell", inline: <<-SHELL
+         mv /tmp/minion.p* /etc/salt/pki/minion
+         chmod 400 /etc/salt/pki/minion/minion.pem
+         service salt-minion restart
+       SHELL
+   end
+
+
+   config.vm.define "minion" do |minion|
+       minion.vm.network "private_network", ip: "192.168.50.20"
+       minion.vm.provision "shell", inline: <<-SHELL
+         echo "id: minion" > /etc/salt/minion.d/id.conf
+       SHELL
+
+       minion.vm.provision :salt do |saltminion|
+         saltminion.minion_key = "salt/key/minion.pem"
+         saltminion.minion_pub = "salt/key/minion.pub"
+       end
+
+       # this is here because of Vagrant run ordering
+       minion.vm.provision "shell", inline: <<-SHELL
+         if [ -f /etc/salt/pki/minion/minion.pem ]; then
+            mv /tmp/minion.p* /etc/salt/pki/minion
+            chmod 400 /etc/salt/pki/minion/minion.pem
+          fi
+         service salt-minion restart
+       SHELL
+    end
+
+
+end
