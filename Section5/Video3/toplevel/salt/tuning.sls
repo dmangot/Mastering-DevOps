@@ -1,3 +1,3 @@
 fs.file-max:
   sysctl.present:
-    - value: 200000
+    - value: 65536
