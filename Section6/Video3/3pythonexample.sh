@@ -14,7 +14,7 @@ timecomplete = int(time.time())
 # subtract start from finish
 elapsedtime = timecomplete - timestart
 # format message
-message = 'mastering.devops.python.elapsed {} {}\n'.format(elapsedtime,timecomplete)
+message = 'callcenter.devops.python.elapsed {} {}\n'.format(elapsedtime,timecomplete)
 
 # fire away!
 sock = socket.socket()
